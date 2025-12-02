@@ -85,6 +85,16 @@ You should get below response
 {"message": "Successfully inserted data!"}
 ```
 
+## Throttling Configuration
+
+This API implements AWS Well-Architected Framework best practice REL05-BP02 (Throttle requests) to protect against resource exhaustion:
+
+- **Rate Limit:** 100 requests per second
+- **Burst Limit:** 200 requests
+- **Behavior:** Requests exceeding these limits receive HTTP 429 (Too Many Requests) responses
+
+These limits are configured to align with backend capacity (Lambda and DynamoDB) and should be adjusted based on load testing results for your specific workload.
+
 ## Cleanup 
 Run below script to delete AWS resources created by this sample stack.
 ```
