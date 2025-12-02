@@ -85,6 +85,15 @@ You should get below response
 {"message": "Successfully inserted data!"}
 ```
 
+## Lambda Concurrency Configuration
+
+This implementation follows AWS Well-Architected Framework REL05-BP02 best practice:
+
+- **Reserved Concurrency:** 60 concurrent executions
+- **Purpose:** Prevents consuming all account-level concurrency during traffic spikes
+- **Calculation:** Based on API Gateway rate limit (100 RPS) × average execution time (0.5s) + 20% buffer
+- **Monitoring:** CloudWatch alarm alerts on throttled invocations
+
 ## Cleanup 
 Run below script to delete AWS resources created by this sample stack.
 ```
