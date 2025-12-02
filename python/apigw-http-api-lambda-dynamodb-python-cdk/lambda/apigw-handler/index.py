@@ -21,36 +21,59 @@ dynamodb_client = boto3.client("dynamodb")
 
 def handler(event, context):
     table = os.environ.get("TABLE_NAME")
-    logging.info(f"## Loaded table name from environemt variable DDB_TABLE: {table}")
-    if event["body"]:
-        item = json.loads(event["body"])
-        logging.info(f"## Received payload: {item}")
-        year = str(item["year"])
-        title = str(item["title"])
-        id = str(item["id"])
-        dynamodb_client.put_item(
-            TableName=table,
-            Item={"year": {"N": year}, "title": {"S": title}, "id": {"S": id}},
-        )
-        message = "Successfully inserted data!"
-        return {
-            "statusCode": 200,
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps({"message": message}),
-        }
-    else:
-        logging.info("## Received request without a payload")
-        dynamodb_client.put_item(
-            TableName=table,
-            Item={
-                "year": {"N": "2012"},
-                "title": {"S": "The Amazing Spider-Man 2"},
-                "id": {"S": str(uuid.uuid4())},
-            },
-        )
-        message = "Successfully inserted data!"
-        return {
-            "statusCode": 200,
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps({"message": message}),
-        }
+    
+    # Extract security context
+    request_context = event.get("requestContext", {})
+    request_id = context.request_id
+    source_ip = request_context.get("identity", {}).get("sourceIp", "unknown")
+    
+    # Structured logging with security context
+    log_entry = {
+        "request_id": request_id,
+        "source_ip": source_ip,
+        "table_name": table,
+    }
+    
+    try:
+        if event.get("body"):
+            item = json.loads(event["body"])
+            log_entry["action"] = "put_item"
+            log_entry["item_id"] = item.get("id")
+            logger.info(json.dumps(log_entry))
+            
+            year = str(item["year"])
+            title = str(item["title"])
+            id = str(item["id"])
+            dynamodb_client.put_item(
+                TableName=table,
+                Item={"year": {"N": year}, "title": {"S": title}, "id": {"S": id}},
+            )
+            message = "Successfully inserted data!"
+            return {
+                "statusCode": 200,
+                "headers": {"Content-Type": "application/json"},
+                "body": json.dumps({"message": message}),
+            }
+        else:
+            log_entry["action"] = "put_item_default"
+            logger.info(json.dumps(log_entry))
+            
+            dynamodb_client.put_item(
+                TableName=table,
+                Item={
+                    "year": {"N": "2012"},
+                    "title": {"S": "The Amazing Spider-Man 2"},
+                    "id": {"S": str(uuid.uuid4())},
+                },
+            )
+            message = "Successfully inserted data!"
+            return {
+                "statusCode": 200,
+                "headers": {"Content-Type": "application/json"},
+                "body": json.dumps({"message": message}),
+            }
+    except Exception as e:
+        log_entry["error"] = str(e)
+        log_entry["status"] = "failed"
+        logger.error(json.dumps(log_entry))
+        raise
